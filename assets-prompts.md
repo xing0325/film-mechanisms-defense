@@ -1,25 +1,44 @@
-# 电影如何让世界运转 · 图像资产提示词
+# 电影如何让世界运转 · Vibe Journey 资产计划
 
-本项目已使用内置图像模型生成并接入以下 16:9 氛围资产。提示词刻意避开电影海报、具体演员与可识别剧照，保留课堂答辩需要的「电影空间」而不是版权素材的替身。
+这版资产服务于 4–7 个 scene 构成的视听旅程：每一张图是一段镜头，而非信息卡片的背景。全部坚持原创匿名人物、非海报构图、无文字、无水印，避免具体演员与电影剧照复刻。
 
-| 路径 | 用途 | 已使用提示词要点 |
+## 已生成并接入（内置图像模型）
+
+| 文件 | 场景用途 | 画面方向 |
 | --- | --- | --- |
-| `public/assets/home-cinema.png` | 首页放映厅 | 空无一人的旧电影院、投影机、灰尘中的光束、硬币/墓碑/灯泡三个细小象征物、35mm 颗粒、无文字。 |
-| `public/assets/no-country-desert.png` | 《老无所依》 | 原创荒漠公路、远方反光、极大留白、冷枯黄晨光、安静的新西部片气质、无人物无文字。 |
-| `public/assets/gbu-cemetery.png` | 《黄金三镖客》 | 原创荒漠墓地圆形空地、三个无名黑色剪影构成三角、长阴影、35mm 西部片语法、无武器无文字。 |
-| `public/assets/jazz-backstage.png` | 《爵士春秋》 | 1970 年代后台化妆镜、暖灯泡、冷色舞台光从门缝进入、无人物、疲惫又华丽、无文字。 |
+| `home-cinema.png` | 首页 | 空放映厅、投影机光束、三件象征物。 |
+| `no-country-desert.png` | 《老无所依》远景 / 地平线 | 空旷荒漠公路、枯黄天光。 |
+| `country-coin-night.png` | Call it | 硬币夜间微距、沥青、公路灯。 |
+| `country-door-fire.png` | 门廊 / 梦火 | 空房间、警长帽剪影、门外远处火光。 |
+| `gbu-rider.png` | Main Title / Desert | 热浪中的极远景骑手。 |
+| `gbu-eye-hand.png` | 眼部 / 手部 | 帽檐下眼部与手、皮革、靴子双曝光。 |
+| `gbu-cemetery.png` | The Trio | 三角对峙的墓地圆场。 |
+| `gbu-gold-run.png` | The Ecstasy of Gold | 奔跑的匿名人物、巨型墓园、金色尘雾。 |
+| `jazz-backstage.png` | 后台 / 身体准备 | 灯泡化妆镜、空椅、后台冷光。 |
+| `jazz-stage.png` | 排练 / showtime / applause | 红帷幕、强白舞台灯、远处群舞剪影。 |
 
-## 后续可补充资产
+## 可继续扩充的镜头提示词
 
-若要在答辩现场进一步加强层次，可按下列提示词生成并替换（不要在图片里生成文字）：
+### 《老无所依》
 
-1. **硬币局部**：`an aged silver coin floating in black negative space, microscopic scratches, one hard rim light, restrained 35mm cinema still, no symbols that resemble real currency, no text, no watermark`
-2. **三名角色独立剪影**：`three separate anonymous western traveller silhouettes, each on a perfectly flat magenta chroma-key background, full body, distant 19th-century costume, no weapons, no faces, no text`
-3. **舞台心电白线**：`a single thin white theatre follow-spot across deep black stage curtains, a faint red pulse glow below it, abstract photographic light exposure, no words, no UI`
-4. **通用光漏叠层**：`abstract analog 35mm film burn and dust, delicate amber edge flare, mostly transparent-looking black field, no frame, no text`
+1. **荒漠风层**：`original empty west Texas desert at dawn, horizontal blowing dust only, pale sun and deep brown ground, cinematic 35mm plate, 16:9, no person, no words, no watermark`
+2. **警徽 / 帽檐前景**：`anonymous old sheriff badge and a weathered hat brim in extreme foreground against a fading desert horizon, shallow depth of field, neo-western 35mm still, 16:9, no readable insignia, no text`
+3. **空房间痕迹**：`desert motel room just after an unseen departure, a plastic chair, a distant traffic light through blinds, cold blue night, sparse 35mm still, no person, no blood, no text`
 
-## 生成约束
+### 《黄金三镖客》
 
-- 始终使用 16:9、无文字、无水印、无商业海报构图。
-- 人物应保持无名、远景或剪影，避免生成具体演员脸部。
-- 图像只承担空间、光线与情绪；论点和交互由网页完成。
+1. **屋内 / 屋外奏乐反差**：`anonymous colonial courtyard at dusk, one dark interior window and a tiny distant brass band silhouette outside, strong contrast, 1960s European western film still, 16:9, no weapons, no text`
+2. **靴子与热浪**：`dusty boots standing still on cracked earth, heat distortion and a long shadow, sun-bleached 35mm western close-up, 16:9, no face, no text`
+3. **胶片热浪 overlay**：`abstract vintage 35mm heat haze and hairline scratches over mostly dark amber field, very sparse, no frame border, no text`
+
+### 《爵士春秋》
+
+1. **手 / 药片 / 香烟**：`anonymous performer hands setting down eye drops, pills and a cigarette beside a worn dressing-room mirror, tungsten bulbs, 1970s film texture, 16:9, no face, no text`
+2. **黑暗观众席**：`view from a theatrical stage looking out to a dark empty auditorium, a single brilliant follow spot and rising smoke, 35mm photograph, 16:9, no text`
+3. **白线终幕**：`a single intense horizontal white theatre light across a black soundstage, faint red pulse afterimage, photographic long exposure, 16:9, no typography`
+
+## 生成规则
+
+- 画幅优先 16:9；无文字、无水印、无海报排版。
+- 不生成具体演员、不复制原片镜头；用空间、光、道具与匿名剪影表达气质。
+- 背景之外必须补充局部、前景、overlay，供页面在滚动中分层推进。

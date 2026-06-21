@@ -2,24 +2,67 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { createRoot } from 'react-dom/client'
 import './style.css'
 
-type Scene = 'home' | 'country' | 'goodbadugly' | 'jazz' | 'ending'
-type MusicMode = 'silent' | 'title' | 'gold' | 'trio'
+type Chapter = 'home' | 'country' | 'gbu' | 'jazz' | 'ending'
+type Cue = 'silence' | 'wind' | 'coin' | 'dream' | 'main-title' | 'soldier' | 'gold' | 'trio' | 'backstage' | 'showtime' | 'applause' | 'white'
 
-const sceneOrder: Scene[] = ['home', 'country', 'goodbadugly', 'jazz', 'ending']
 const asset = (name: string) => `${import.meta.env.BASE_URL}assets/${name}`
 
-const sceneLabels: Record<Scene, string> = {
-  home: '导览',
-  country: '01 / 信仰',
-  goodbadugly: '02 / 类型',
-  jazz: '03 / 表演',
-  ending: '尾声',
+type Frame = {
+  id: string
+  chapter: Chapter
+  chapterName?: string
+  number?: string
+  image: string
+  kicker?: string
+  line: string
+  subline?: string
+  cue: Cue
+  variant: string
 }
 
-class SoundEngine {
+const frames: Frame[] = [
+  { id: 'home', chapter: 'home', image: asset('home-cinema.png'), kicker: 'AN AUDIOVISUAL FILM EXPERIENCE', line: '电影如何\n让世界运转', subline: 'Push the world forward.', cue: 'silence', variant: 'home' },
+  { id: 'country-01', chapter: 'country', chapterName: '《老无所依》', number: '01 / 05', image: asset('no-country-desert.png'), kicker: 'NO COUNTRY FOR OLD MEN', line: '这片土地很残酷。', subline: 'And it does not explain itself.', cue: 'wind', variant: 'country-horizon' },
+  { id: 'country-02', chapter: 'country', number: '02 / 05', image: asset('country-coin-night.png'), kicker: 'A SMALL DECISION', line: 'CALL IT.', subline: 'The coin is already listening.', cue: 'coin', variant: 'country-coin' },
+  { id: 'country-03', chapter: 'country', number: '03 / 05', image: asset('country-door-fire.png'), kicker: 'AFTER THE DOOR', line: '有些房间，\n不再给出答案。', cue: 'dream', variant: 'country-door' },
+  { id: 'country-04', chapter: 'country', number: '04 / 05', image: asset('no-country-desert.png'), kicker: 'THE OLD WORLD', line: '老的不是人。', subline: '是一种理解世界的方式。', cue: 'wind', variant: 'country-sheriff' },
+  { id: 'country-05', chapter: 'country', number: '05 / 05', image: asset('country-door-fire.png'), kicker: 'A DREAM OF FIRE', line: '远处有火。', subline: '然后什么也没有发生。', cue: 'dream', variant: 'country-fire' },
+  { id: 'gbu-01', chapter: 'gbu', chapterName: '《黄金三镖客》', number: '01 / 06', image: asset('gbu-rider.png'), kicker: 'THE GOOD, THE BAD AND THE UGLY', line: '荒野就是规则。', subline: 'MAIN TITLE', cue: 'main-title', variant: 'gbu-rider' },
+  { id: 'gbu-02', chapter: 'gbu', number: '02 / 06', image: asset('gbu-eye-hand.png'), kicker: 'ONE LOOK / ONE MOVE', line: 'Every eye\nis a horizon.', cue: 'main-title', variant: 'gbu-eye' },
+  { id: 'gbu-03', chapter: 'gbu', number: '03 / 06', image: asset('gbu-cemetery.png'), kicker: 'THE STORY OF A SOLDIER', line: '屋外，音乐还在继续。', subline: 'The waiting gets louder.', cue: 'soldier', variant: 'gbu-soldier' },
+  { id: 'gbu-04', chapter: 'gbu', number: '04 / 06', image: asset('gbu-rider.png'), kicker: 'THE DESERT', line: 'Heat turns distance\ninto a promise.', cue: 'soldier', variant: 'gbu-desert' },
+  { id: 'gbu-05', chapter: 'gbu', number: '05 / 06', image: asset('gbu-gold-run.png'), kicker: 'THE ECSTASY OF GOLD', line: '欲望开始奔跑。', subline: 'The whole horizon is on fire.', cue: 'gold', variant: 'gbu-gold' },
+  { id: 'gbu-06', chapter: 'gbu', number: '06 / 06', image: asset('gbu-cemetery.png'), kicker: 'THE TRIO', line: '真正的事件，\n是等待。', cue: 'trio', variant: 'gbu-trio' },
+  { id: 'jazz-01', chapter: 'jazz', chapterName: '《爵士春秋》', number: '01 / 06', image: asset('jazz-backstage.png'), kicker: 'ALL THAT JAZZ', line: 'It’s showtime, folks.', cue: 'backstage', variant: 'jazz-mirror' },
+  { id: 'jazz-02', chapter: 'jazz', number: '02 / 06', image: asset('jazz-backstage.png'), kicker: 'THE BODY GETS READY', line: 'One more thing.\nOne more night.', cue: 'backstage', variant: 'jazz-body' },
+  { id: 'jazz-03', chapter: 'jazz', number: '03 / 06', image: asset('jazz-stage.png'), kicker: 'REHEARSAL', line: '生活被剪成了演出。', cue: 'showtime', variant: 'jazz-rehearsal' },
+  { id: 'jazz-04', chapter: 'jazz', number: '04 / 06', image: asset('jazz-stage.png'), kicker: 'TAKE OFF WITH US', line: 'Brighter. Faster.\nAgain.', cue: 'showtime', variant: 'jazz-showtime' },
+  { id: 'jazz-05', chapter: 'jazz', number: '05 / 06', image: asset('jazz-stage.png'), kicker: 'APPLAUSE', line: '观众鼓掌。\n身体熄灭。', cue: 'applause', variant: 'jazz-applause' },
+  { id: 'jazz-06', chapter: 'jazz', number: '06 / 06', image: asset('jazz-stage.png'), kicker: 'ONE LAST LINE', line: 'Then the line\nbecomes light.', cue: 'white', variant: 'jazz-white' },
+  { id: 'ending', chapter: 'ending', image: asset('home-cinema.png'), kicker: 'END OF SCREENING', line: '电影没有结束。', subline: '它只是重新开始运转。', cue: 'silence', variant: 'ending' },
+]
+
+const audioSlots: Record<Cue, { source?: string; fallback: number; texture: OscillatorType }> = {
+  silence: { fallback: 0, texture: 'sine' },
+  wind: { source: `${import.meta.env.BASE_URL}audio/no-country-wind.mp3`, fallback: 48, texture: 'sine' },
+  coin: { source: `${import.meta.env.BASE_URL}audio/no-country-coin.mp3`, fallback: 196, texture: 'triangle' },
+  dream: { source: `${import.meta.env.BASE_URL}audio/no-country-dream.mp3`, fallback: 66, texture: 'sine' },
+  'main-title': { source: `${import.meta.env.BASE_URL}audio/gbu-main-title.mp3`, fallback: 132, texture: 'square' },
+  soldier: { source: `${import.meta.env.BASE_URL}audio/gbu-story-of-a-soldier.mp3`, fallback: 92, texture: 'triangle' },
+  gold: { source: `${import.meta.env.BASE_URL}audio/gbu-ecstasy-of-gold.mp3`, fallback: 176, texture: 'sawtooth' },
+  trio: { source: `${import.meta.env.BASE_URL}audio/gbu-trio.mp3`, fallback: 74, texture: 'sine' },
+  backstage: { source: `${import.meta.env.BASE_URL}audio/jazz-backstage.mp3`, fallback: 108, texture: 'triangle' },
+  showtime: { source: `${import.meta.env.BASE_URL}audio/jazz-take-off-with-us.mp3`, fallback: 158, texture: 'sawtooth' },
+  applause: { source: `${import.meta.env.BASE_URL}audio/jazz-applause.mp3`, fallback: 205, texture: 'square' },
+  white: { source: `${import.meta.env.BASE_URL}audio/jazz-bye-bye-life.mp3`, fallback: 330, texture: 'sine' },
+}
+
+class AudioDirector {
   context: AudioContext | null = null
+  oscillator: OscillatorNode | null = null
+  gain: GainNode | null = null
   muted = true
-  drone: { oscillator: OscillatorNode; gain: GainNode } | null = null
+  currentAudio: HTMLAudioElement | null = null
 
   unlock() {
     if (!this.context) this.context = new AudioContext()
@@ -29,104 +72,107 @@ class SoundEngine {
 
   setMuted(muted: boolean) {
     this.muted = muted
-    if (muted) this.stopDrone()
+    if (muted) this.stop()
   }
 
-  tone(frequency: number, duration = 0.18, type: OscillatorType = 'sine', volume = 0.045) {
-    if (this.muted || !this.context) return
-    const now = this.context.currentTime
+  stop() {
+    const oscillator = this.oscillator
+    const gain = this.gain
+    const currentAudio = this.currentAudio
+    if (gain && this.context) gain.gain.exponentialRampToValueAtTime(0.0001, this.context.currentTime + 0.45)
+    if (oscillator) window.setTimeout(() => oscillator.stop(), 480)
+    this.oscillator = null
+    this.gain = null
+    if (currentAudio) {
+      this.fade(currentAudio, 0, 500, () => currentAudio.pause())
+      this.currentAudio = null
+    }
+  }
+
+  fade(audio: HTMLAudioElement, target: number, duration: number, done?: () => void) {
+    const start = audio.volume
+    const started = performance.now()
+    const tick = (now: number) => {
+      const p = Math.min((now - started) / duration, 1)
+      audio.volume = start + (target - start) * p
+      if (p < 1) requestAnimationFrame(tick)
+      else done?.()
+    }
+    requestAnimationFrame(tick)
+  }
+
+  cue(name: Cue) {
+    this.stop()
+    if (this.muted || !this.context || name === 'silence') return
+    const slot = audioSlots[name]
+    // To attach licensed local clips, place them in public/audio and set window.FILM_AUDIO_ENABLED = true.
+    if (slot.source && (window as Window & { FILM_AUDIO_ENABLED?: boolean }).FILM_AUDIO_ENABLED) {
+      const next = new Audio(slot.source)
+      next.loop = true
+      next.volume = 0
+      void next.play().then(() => this.fade(next, 0.62, 850))
+      this.currentAudio = next
+      return
+    }
     const oscillator = this.context.createOscillator()
     const gain = this.context.createGain()
-    oscillator.type = type
-    oscillator.frequency.setValueAtTime(frequency, now)
-    gain.gain.setValueAtTime(0.0001, now)
-    gain.gain.exponentialRampToValueAtTime(volume, now + 0.02)
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration)
-    oscillator.connect(gain).connect(this.context.destination)
-    oscillator.start(now)
-    oscillator.stop(now + duration + 0.04)
-  }
-
-  click(kind: 'metal' | 'stage' | 'soft' = 'soft') {
-    if (kind === 'metal') {
-      this.tone(720, 0.08, 'square', 0.035)
-      window.setTimeout(() => this.tone(310, 0.22, 'sine', 0.028), 50)
-    } else if (kind === 'stage') {
-      this.tone(180, 0.18, 'triangle', 0.04)
-      window.setTimeout(() => this.tone(260, 0.12, 'sine', 0.035), 72)
-    } else this.tone(430, 0.09, 'sine', 0.025)
-  }
-
-  stopDrone() {
-    if (!this.drone || !this.context) return
-    const { oscillator, gain } = this.drone
-    gain.gain.exponentialRampToValueAtTime(0.0001, this.context.currentTime + 0.4)
-    window.setTimeout(() => oscillator.stop(), 450)
-    this.drone = null
-  }
-
-  setAtmosphere(mode: MusicMode | 'desert' | 'jazz') {
-    this.stopDrone()
-    if (this.muted || !this.context || mode === 'silent') return
-    const pitch = mode === 'desert' ? 52 : mode === 'jazz' ? 110 : mode === 'title' ? 128 : mode === 'gold' ? 164 : 76
     const now = this.context.currentTime
-    const oscillator = this.context.createOscillator()
-    const gain = this.context.createGain()
-    oscillator.type = mode === 'jazz' ? 'triangle' : 'sine'
-    oscillator.frequency.setValueAtTime(pitch, now)
+    oscillator.type = slot.texture
+    oscillator.frequency.setValueAtTime(slot.fallback, now)
+    oscillator.detune.setValueAtTime(name === 'wind' ? -220 : 0, now)
     gain.gain.setValueAtTime(0.0001, now)
-    gain.gain.exponentialRampToValueAtTime(0.018, now + 0.6)
+    gain.gain.exponentialRampToValueAtTime(name === 'gold' || name === 'showtime' ? 0.028 : 0.016, now + 0.8)
     oscillator.connect(gain).connect(this.context.destination)
     oscillator.start()
-    this.drone = { oscillator, gain }
+    this.oscillator = oscillator
+    this.gain = gain
+  }
+
+  accent(kind: 'metal' | 'light' | 'beat' = 'light') {
+    if (this.muted || !this.context) return
+    const values = kind === 'metal' ? [740, 330] : kind === 'beat' ? [118, 168] : [430, 540]
+    values.forEach((pitch, index) => {
+      window.setTimeout(() => {
+        if (!this.context || this.muted) return
+        const osc = this.context.createOscillator()
+        const gain = this.context.createGain()
+        const now = this.context.currentTime
+        osc.type = kind === 'metal' ? 'square' : 'sine'
+        osc.frequency.setValueAtTime(pitch, now)
+        gain.gain.setValueAtTime(0.0001, now)
+        gain.gain.exponentialRampToValueAtTime(0.035, now + 0.01)
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.2)
+        osc.connect(gain).connect(this.context.destination)
+        osc.start(now); osc.stop(now + .23)
+      }, index * 75)
+    })
   }
 }
 
 function App() {
-  const audio = useRef(new SoundEngine())
-  const [scene, setScene] = useState<Scene>('home')
-  const [defense, setDefense] = useState(false)
+  const audio = useRef(new AudioDirector())
+  const [activeIndex, setActiveIndex] = useState(0)
   const [soundOn, setSoundOn] = useState(false)
-  const [coinState, setCoinState] = useState<'ready' | 'spinning' | 'result'>('ready')
-  const [explainClicks, setExplainClicks] = useState<string[]>([])
-  const [selectedCharacter, setSelectedCharacter] = useState<number | null>(null)
-  const [selectedLabel, setSelectedLabel] = useState<string | null>(null)
-  const [musicMode, setMusicMode] = useState<MusicMode>('silent')
-  const [aimed, setAimed] = useState<number | null>(null)
-  const [standoff, setStandoff] = useState(false)
-  const [day, setDay] = useState(0)
-  const [applause, setApplause] = useState(0)
+  const [defense, setDefense] = useState(false)
+  const [called, setCalled] = useState(false)
+  const [flash, setFlash] = useState(false)
+  const active = frames[activeIndex]
+  const chapterIndex = frames.filter((frame) => frame.chapter === active.chapter).findIndex((frame) => frame.id === active.id) + 1
+  const chapterCount = frames.filter((frame) => frame.chapter === active.chapter).length
 
-  const wakeSound = () => {
+  const wake = () => {
     if (!soundOn) {
       audio.current.unlock()
       setSoundOn(true)
     }
   }
 
-  const go = (next: Scene) => {
-    wakeSound()
-    document.getElementById(next)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  const go = (index: number) => {
+    wake()
+    document.getElementById(frames[index].id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  const resetScene = () => {
-    if (scene === 'country') {
-      setCoinState('ready')
-      setExplainClicks([])
-    }
-    if (scene === 'goodbadugly') {
-      setSelectedCharacter(null)
-      setSelectedLabel(null)
-      setMusicMode('silent')
-      setAimed(null)
-      setStandoff(false)
-    }
-    if (scene === 'jazz') {
-      setDay(0)
-      setApplause(0)
-    }
-    audio.current.setAtmosphere('silent')
-  }
+  const firstFrame = (chapter: Chapter) => frames.findIndex((frame) => frame.chapter === chapter)
 
   useEffect(() => {
     const onMove = (event: MouseEvent) => {
@@ -138,242 +184,100 @@ function App() {
   }, [])
 
   useEffect(() => {
-    const sections = [...document.querySelectorAll<HTMLElement>('[data-scene]')]
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0]
-        if (visible) setScene((visible.target as HTMLElement).dataset.scene as Scene)
-      },
-      { threshold: [0.35, 0.55, 0.75] },
-    )
-    sections.forEach((section) => observer.observe(section))
+    const targets = [...document.querySelectorAll<HTMLElement>('[data-frame]')]
+    const observer = new IntersectionObserver((entries) => {
+      const strongest = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0]
+      if (strongest) setActiveIndex(Number((strongest.target as HTMLElement).dataset.index))
+    }, { threshold: [0.48, 0.64, 0.82] })
+    targets.forEach((target) => observer.observe(target))
     return () => observer.disconnect()
   }, [])
 
   useEffect(() => {
-    const handleKeys = (event: KeyboardEvent) => {
-      if (event.key === '1') go('country')
-      if (event.key === '2') go('goodbadugly')
-      if (event.key === '3') go('jazz')
-      if (event.key === 'Home') go('home')
+    if (soundOn) audio.current.cue(active.cue)
+  }, [active.cue, soundOn])
+
+  useEffect(() => {
+    const keys = (event: KeyboardEvent) => {
+      if (event.key === '1') go(firstFrame('country'))
+      if (event.key === '2') go(firstFrame('gbu'))
+      if (event.key === '3') go(firstFrame('jazz'))
+      if (event.key === 'Home') go(0)
+      if (event.code === 'Space') { event.preventDefault(); go(Math.min(activeIndex + 1, frames.length - 1)) }
       if (event.key.toLowerCase() === 'm') {
-        wakeSound()
         const next = !soundOn
+        if (next) wake()
         setSoundOn(next)
         audio.current.setMuted(!next)
       }
-      if (event.key.toLowerCase() === 'r') resetScene()
+      if (event.key.toLowerCase() === 'r') go(activeIndex)
       if (event.key.toLowerCase() === 'f') {
         if (document.fullscreenElement) void document.exitFullscreen()
         else void document.documentElement.requestFullscreen()
       }
-      if (event.code === 'Space') {
-        event.preventDefault()
-        const index = sceneOrder.indexOf(scene)
-        go(sceneOrder[Math.min(index + 1, sceneOrder.length - 1)])
-      }
     }
-    window.addEventListener('keydown', handleKeys)
-    return () => window.removeEventListener('keydown', handleKeys)
-  }, [scene, soundOn])
+    window.addEventListener('keydown', keys)
+    return () => window.removeEventListener('keydown', keys)
+  }, [activeIndex, soundOn])
 
-  useEffect(() => {
-    if (scene === 'country') audio.current.setAtmosphere('desert')
-    if (scene === 'jazz') audio.current.setAtmosphere('jazz')
-    if (scene !== 'country' && scene !== 'jazz' && scene !== 'goodbadugly') audio.current.setAtmosphere('silent')
-  }, [scene, soundOn])
+  const currentScene = useMemo(() => `${active.chapter} ${active.variant}`, [active])
 
-  const flipCoin = () => {
-    wakeSound()
-    setCoinState('spinning')
-    audio.current.click('metal')
-    window.setTimeout(() => {
-      setCoinState('result')
-      audio.current.tone(64, 0.7, 'sine', 0.045)
-    }, 1700)
+  const callIt = () => {
+    wake()
+    setCalled(true)
+    setFlash(true)
+    audio.current.accent('metal')
+    window.setTimeout(() => setFlash(false), 480)
   }
-
-  const chooseMusic = (mode: MusicMode) => {
-    wakeSound()
-    setMusicMode(mode)
-    audio.current.setAtmosphere(mode)
-    audio.current.click(mode === 'trio' ? 'metal' : 'soft')
-  }
-
-  const labelDetails = useMemo(() => {
-    const all = [
-      { title: 'THE GOOD', fact: '贪婪、投机，也会利用别人', question: '当“好人”也不纯粹，类型片还成立吗？' },
-      { title: 'THE BAD', fact: '残忍，但稳定、清晰，像职业机器', question: '有时候“坏人”反而更符合类型预期。' },
-      { title: 'THE UGLY', fact: '狼狈、贪婪、滑稽，却最有生命力', question: '边缘人物反而可能最像真实的人。' },
-    ]
-    return all.find((item) => item.title === selectedLabel)
-  }, [selectedLabel])
-
-  const dayActions = [
-    ['眼药水', '他需要让自己看起来还能工作。'],
-    ['药片', '他不是在恢复健康，而是在透支下一段表演。'],
-    ['香烟', '自毁和风格，在他身上几乎分不开。'],
-    ['排练', '生活不是生活，生活被他剪成舞台。'],
-    ['掌声', '观众看到的是精彩，他付出的是身体。'],
-    ['心电图', '表演越接近完成，身体越接近停机。'],
-  ]
 
   return (
-    <main className={defense ? 'app defense-mode' : 'app'}>
-      <div className="film-grain" />
-      <header className="topbar">
-        <button className="wordmark" onClick={() => go('home')}>FILM / MECHANISMS</button>
-        <div className="topbar-actions">
-          <span className="scene-readout">{sceneLabels[scene]}</span>
-          <button className={soundOn ? 'utility is-on' : 'utility'} onClick={() => { wakeSound(); const next = !soundOn; setSoundOn(next); audio.current.setMuted(!next) }}>
-            {soundOn ? 'SOUND ON' : 'SOUND OFF'}
-          </button>
-          <button className={defense ? 'utility is-on' : 'utility'} onClick={() => setDefense(!defense)}>DEFENSE MODE</button>
+    <main className={defense ? `app defense ${currentScene}` : `app ${currentScene}`}>
+      <div className={flash ? 'flash active' : 'flash'} />
+      <div className="grain" />
+      <div className={`pointer-world pointer-${active.chapter}`}><i /></div>
+      <header className="masthead">
+        <button className="masthead-mark" onClick={() => go(0)}>FILM / 03</button>
+        <div className="masthead-meta">
+          {active.number && <span>{active.number}</span>}
+          <button onClick={() => { const next = !soundOn; if (next) wake(); setSoundOn(next); audio.current.setMuted(!next) }}>{soundOn ? 'SOUND / ON' : 'SOUND / OFF'}</button>
+          <button className={defense ? 'active' : ''} onClick={() => setDefense(!defense)}>DEFENSE</button>
         </div>
       </header>
 
-      <aside className="progress-rail" aria-label="章节进度">
-        {(['country', 'goodbadugly', 'jazz'] as Scene[]).map((item, index) => (
-          <button key={item} className={scene === item ? 'rail-dot active' : 'rail-dot'} onClick={() => go(item)}>
-            <span>0{index + 1}</span>
-          </button>
-        ))}
-      </aside>
+      {frames.map((frame, index) => (
+        <section
+          key={frame.id}
+          id={frame.id}
+          data-frame
+          data-index={index}
+          className={`journey-frame ${frame.chapter} ${frame.variant} ${index === activeIndex ? 'is-active' : ''}`}
+          style={{ '--scene': `url('${frame.image}')`, '--frame-index': index } as CSSProperties}
+          onClick={() => { if (index !== 0) { wake(); audio.current.accent(frame.chapter === 'jazz' ? 'beat' : 'light') } }}
+        >
+          <div className="image-plane" />
+          <div className="far-plane" />
+          <div className="frame-shade" />
+          <div className="dust-layer" />
+          <div className="foreground-layer" aria-hidden="true"><i /><i /><i /></div>
+          <div className="frame-copy">
+            {frame.chapterName && <p className="chapter-name">{frame.chapterName}</p>}
+            {frame.kicker && <p className="kicker">{frame.kicker}</p>}
+            <h1>{frame.line.split('\n').map((part, idx) => <span key={part}>{part}{idx < frame.line.split('\n').length - 1 && <br />}</span>)}</h1>
+            {frame.subline && <p className="subline">{frame.id === 'country-02' && called ? 'It was never yours to decide.' : frame.subline}</p>}
+          </div>
+          {frame.id === 'home' && <button className="enter" onClick={(event) => { event.stopPropagation(); go(1) }}>ENTER THE SCREEN <i>↓</i></button>}
+          {frame.id === 'country-02' && <button className={called ? 'coin-trigger called' : 'coin-trigger'} onClick={(event) => { event.stopPropagation(); callIt() }}><span>◎</span><b>{called ? 'IT HAS SPOKEN' : 'CALL IT'}</b></button>}
+          {frame.id === 'gbu-06' && <div className="trio-points" aria-hidden="true"><i /><i /><i /></div>}
+          {frame.id === 'jazz-06' && <div className="white-line" aria-hidden="true" />}
+          {frame.chapter !== 'home' && frame.chapter !== 'ending' && <p className="scroll-whisper">SCROLL / LET THE SHOT BREATHE</p>}
+          {frame.id === 'ending' && <button className="enter replay" onClick={() => go(0)}>REPLAY THE WORLD <i>↑</i></button>}
+        </section>
+      ))}
 
-      <section id="home" data-scene="home" className="scene home-scene">
-        <div className="scene-bg" style={{ backgroundImage: `url('${asset('home-cinema.png')}')` }} />
-        <div className="vignette" />
-        <div className="home-copy">
-          <p className="eyebrow">INTERACTIVE FILM ESSAY / 2026</p>
-          <h1>电影如何<br /><em>让世界运转</em></h1>
-          <p className="lede">三部电影，三套机制：信仰、类型、表演。</p>
-          <p className="intro">这不是电影资料站。<br />这是把电影课里的三个问题，做成三个可以操作的网页实验。</p>
-          <button className="primary" onClick={() => go('country')}>进入放映 <i>↓</i></button>
-        </div>
-        <nav className="home-chapters" aria-label="章节入口">
-          <button onClick={() => go('country')}>
-            <span>01</span><b>一枚硬币</b><small>当上帝不再解释世界，人还能依靠什么？</small>
-          </button>
-          <button onClick={() => go('goodbadugly')}>
-            <span>02</span><b>三角对峙</b><small>当标签不再可靠，类型片还如何成立？</small>
-          </button>
-          <button onClick={() => go('jazz')}>
-            <span>03</span><b>一盏舞台灯</b><small>当人生将尽，表演为什么还要继续？</small>
-          </button>
-        </nav>
-        <p className="scroll-cue">SCROLL TO ADVANCE <span>↓</span></p>
-      </section>
-
-      <section id="country" data-scene="country" className="scene chapter country-scene">
-        <div className="scene-bg depth-bg" style={{ backgroundImage: `url('${asset('no-country-desert.png')}')` }} />
-        <div className="chapter-shade country-shade" />
-        <div className="chapter-intro">
-          <p className="eyebrow">CHAPTER 01 / 信仰机制失效</p>
-          <h2>《老无所依》<br /><em>世界不再解释自己</em></h2>
-          <p className="lede">这不只是追杀片。它问的是：当世界不再被上帝、法律和经验解释，人还剩下什么？</p>
-        </div>
-        <aside className="knowledge-card">
-          <span>你需要知道的三件事</span>
-          <ol><li>一个男人捡到一箱钱，引来杀手。</li><li>一个老警长追查案件，却越来越无力。</li><li>电影没有给出传统正义结局。</li></ol>
-        </aside>
-        <div className="country-experiments">
-          <article className="experiment coin-experiment">
-            <div className="experiment-header"><span>实验一 / 选择</span><b>CALL IT.</b></div>
-            <div className={coinState === 'spinning' ? 'coin spinning' : coinState === 'result' ? 'coin result' : 'coin'} aria-label="硬币"><span>◎</span></div>
-            {coinState === 'ready' && <div className="choice-row"><button onClick={flipCoin}>正面</button><button onClick={flipCoin}>反面</button></div>}
-            {coinState === 'spinning' && <p className="coin-prompt">选择正在离开你的手。</p>}
-            {coinState === 'result' && <p className="result-copy">你做出了选择。<br /><strong>但这个选择没有让世界变得更公正。</strong></p>}
-          </article>
-          <article className={explainClicks.length >= 3 ? 'experiment explain-experiment complete' : 'experiment explain-experiment'}>
-            <div className="experiment-header"><span>实验二 / 解释</span><b>让世界成立的三种说法</b></div>
-            <div className="concepts">
-              {['钱', '枪', '上帝'].map((word) => <button key={word} className={explainClicks.includes(word) ? 'selected' : ''} onClick={() => { wakeSound(); audio.current.click('metal'); setExplainClicks((now) => now.includes(word) ? now : [...now, word]) }}>{word}</button>)}
-            </div>
-            <div className="broken-lines"><i /><i /><i /></div>
-            {explainClicks.length >= 3 ? <p className="result-copy"><strong>解释失败。</strong><br />警长真正失去的不是办案能力，而是他原本相信的那个世界。</p> : <p className="soft-copy">点击三个词，试着把它们连成一个能解释世界的闭环。</p>}
-          </article>
-        </div>
-        <article className="lesson-card country-lesson"><span>我从课堂里理解到的东西</span><p>真正残酷的不是杀人，而是信仰的落空。警长面对的不是案件，而是一个无法再被上帝、法律、经验解释的世界。</p><button className="text-button" onClick={() => go('goodbadugly')}>继续：类型如何运转 <i>→</i></button></article>
-      </section>
-
-      <section id="goodbadugly" data-scene="goodbadugly" className={`scene chapter gbu-scene music-${musicMode}`}>
-        <div className="scene-bg depth-bg" style={{ backgroundImage: `url('${asset('gbu-cemetery.png')}')` }} />
-        <div className="chapter-shade gbu-shade" />
-        <div className="chapter-intro">
-          <p className="eyebrow">CHAPTER 02 / 类型机制运转</p>
-          <h2>《黄金三镖客》<br /><em>规则被使用，也被弄脏</em></h2>
-          <p className="lede">类型片让观众预先知道规则；这部电影则把那些规则摆上台面，再让它们失效。</p>
-        </div>
-        <aside className="knowledge-card gbu-knowledge"><span>西部片的预设</span><ol><li>荒野意味着法律缺席。</li><li>牛仔会决斗。</li><li>好人与坏人通常能被区分。</li></ol></aside>
-        <div className="gbu-experiments">
-          <article className="experiment label-experiment">
-            <div className="experiment-header"><span>实验一 / 贴标签</span><b>标签够用吗？</b></div>
-            <div className="character-row">
-              {['A', 'B', 'C'].map((person, index) => <button key={person} onClick={() => { wakeSound(); audio.current.click('soft'); setSelectedCharacter(index); setSelectedLabel(null) }} className={selectedCharacter === index ? 'character selected' : 'character'}><i /><span>{person}</span></button>)}
-            </div>
-            {selectedCharacter !== null ? <div className="label-choices">{['THE GOOD', 'THE BAD', 'THE UGLY'].map((label) => <button key={label} onClick={() => { audio.current.click('metal'); setSelectedLabel(label) }}>{label}</button>)}</div> : <p className="soft-copy">选择一个剪影，再给他贴上熟悉的类型标签。</p>}
-            {labelDetails && <div className="label-detail"><b>{labelDetails.title}</b><p>实际行为：{labelDetails.fact}</p><em>{labelDetails.question}</em></div>}
-          </article>
-          <article className="experiment music-experiment">
-            <div className="experiment-header"><span>实验二 / 同画面，不同音乐</span><b>音乐正在改写叙事</b></div>
-            <div className="music-console">
-              {([
-                ['silent', '无音乐', '只剩环境。事件没有被类型化。'],
-                ['title', 'TITLE', '节奏建立一个迅速可辨的类型世界。'],
-                ['gold', 'GOLD', '欲望被推进，命运感被放大。'],
-                ['trio', 'THE TRIO', '音乐拖长时间，让等待成为事件。'],
-              ] as [MusicMode, string, string][]).map(([mode, title, note]) => <button key={mode} className={musicMode === mode ? 'mode active' : 'mode'} onClick={() => chooseMusic(mode)}><span>{title}</span><small>{note}</small></button>)}
-            </div>
-            <div className="music-visual"><span className="music-line one" /><span className="music-line two" /><span className="music-line three" /><p>{musicMode === 'silent' ? '静下来，才会意识到：紧张感原来不是天然存在。' : musicMode === 'title' ? '音乐帮助类型世界被迅速建立。' : musicMode === 'gold' ? '它不改变事件，却让寻找与欲望变得宏大。' : '开枪之前的等待，被音乐拉长成了整个世界。'}</p></div>
-            <p className="music-thesis">音乐不改变事件，<strong>却改变你理解事件的方式。</strong></p>
-          </article>
-          <article className="experiment standoff-experiment">
-            <div className="experiment-header"><span>实验三 / 等待</span><b>对峙不在开枪</b></div>
-            <div className="standoff-stage">
-              {[0, 1, 2].map((figure) => <button key={figure} className={aimed === figure ? `target target-${figure} aimed` : `target target-${figure}`} onMouseEnter={() => { setAimed(figure); if (soundOn) audio.current.tone(190 + figure * 50, 0.09, 'sine', 0.018) }} onClick={() => { wakeSound(); setAimed(figure); setStandoff(true); audio.current.click('metal') }}><i /><span>{['他在等', '他在瞄准', '他还没动'][figure]}</span></button>)}
-              <div className="reticle" />
-            </div>
-            {standoff ? <p className="result-copy">你瞄准了他。他瞄准了另一个人。<br /><strong>另一个人正在等你先动。</strong></p> : <p className="soft-copy">移动鼠标，选择一个人。这里没有真正的开枪。</p>}
-          </article>
-        </div>
-        <article className="lesson-card gbu-lesson"><span>我从课堂里理解到的东西</span><p>类型不是低级套路，而是一套观众熟悉的规则。导演可以利用规则制造期待、反转和快感，再让好人、坏人、丑人这些标签变得根本不够用。</p><button className="text-button" onClick={() => go('jazz')}>继续：表演如何吞噬人生 <i>→</i></button></article>
-      </section>
-
-      <section id="jazz" data-scene="jazz" className="scene chapter jazz-scene" style={{ '--day': day, '--applause': applause } as CSSProperties}>
-        <div className="scene-bg depth-bg" style={{ backgroundImage: `url('${asset('jazz-backstage.png')}')` }} />
-        <div className="chapter-shade jazz-shade" />
-        <div className="spotlight" />
-        <div className="chapter-intro">
-          <p className="eyebrow">CHAPTER 03 / 表演机制吞噬人生</p>
-          <h2>《爵士春秋》<br /><em>把崩溃编进一次演出</em></h2>
-          <p className="lede">这是一部歌舞片，但它把欲望、工作、崩溃与死亡都变成了表演的一部分。</p>
-        </div>
-        <aside className="knowledge-card jazz-knowledge"><span>你需要知道的三件事</span><ol><li>主角是一个近乎自毁的舞台导演。</li><li>工作、疾病与死亡都被他做成表演。</li><li>它的核心不是快乐，而是燃烧。</li></ol></aside>
-        <div className="jazz-experiments">
-          <article className="experiment day-experiment">
-            <div className="experiment-header"><span>实验一 / 开始一天</span><b>再多一点，就能上台</b></div>
-            <div className="mirror"><div className="mirror-copy">{day > 0 ? <><b>{dayActions[day - 1][0]}</b><p>{dayActions[day - 1][1]}</p></> : <p>镜子里的你，正在等待又一次开始。</p>}</div><div className="pulse-line"><i style={{ width: `${Math.max(18, 100 - day * 13)}%` }} /></div></div>
-            <button className="primary stage-primary" onClick={() => { wakeSound(); const next = Math.min(day + 1, 6); setDay(next); audio.current.click('stage'); audio.current.tone(95 + next * 14, 0.24, 'triangle', 0.035) }}>{day < 6 ? '开始一天' : '灯还亮着'}</button>
-          </article>
-          <article className="experiment applause-experiment">
-            <div className="experiment-header"><span>实验二 / 反馈回路</span><b>APPLAUSE</b></div>
-            <button className="applause-button" onClick={() => { wakeSound(); const next = Math.min(applause + 1, 6); setApplause(next); audio.current.click('stage'); audio.current.tone(190 + next * 18, 0.16, 'triangle', 0.038) }}>APPLAUSE <span>× {applause}</span></button>
-            <div className="applause-meter"><span style={{ height: `${25 + applause * 11}%` }} /><span style={{ height: `${40 + applause * 9}%` }} /><span style={{ height: `${18 + applause * 13}%` }} /><span style={{ height: `${35 + applause * 10}%` }} /><span style={{ height: `${22 + applause * 12}%` }} /></div>
-            <p className={applause >= 5 ? 'result-copy applause-result' : 'soft-copy'}>{applause >= 5 ? <>观众越鼓掌，<br /><strong>表演者越接近献祭。</strong></> : '每一次掌声，舞台更亮；心电图也更弱。'}</p>
-          </article>
-        </div>
-        <article className="lesson-card jazz-lesson"><span>我从课堂里理解到的东西</span><p>歌舞不一定只是热闹。它也可以是一种哲学：人明知道自己会崩溃，还是把崩溃编排成一次演出。爵士精神不是拒绝死亡，而是把死亡也编进最后一支舞。</p><button className="text-button" onClick={() => go('ending')}>进入尾声 <i>→</i></button></article>
-      </section>
-
-      <section id="ending" data-scene="ending" className="scene ending-scene">
-        <div className="ending-glow" />
-        <p className="eyebrow">END OF SCREENING</p>
-        <h2>电影不是答案。<br /><em>电影是一种让世界运转的方式。</em></h2>
-        <p className="ending-copy">有的世界靠信仰维持。有的世界靠类型规则维持。有的世界靠表演维持。厉害的电影，让我们看见这些机制如何运转，也如何崩塌。</p>
-        <div className="final-lines"><p><b>《老无所依》</b> 当上帝沉默，人如何面对不可解释的恶。</p><p><b>《黄金三镖客》</b> 类型片是一套可以被操纵、污染、反讽的规则。</p><p><b>《爵士春秋》</b> 人生可以被排练、即兴，直到最后一秒。</p></div>
-        <button className="primary replay" onClick={() => go('home')}>REPLAY THE WORLD <i>↑</i></button>
-        <p className="key-help">快捷键：1 / 2 / 3 跳章 · Space 下一幕 · M 静音 · R 重置 · F 全屏</p>
-      </section>
+      {active.chapter !== 'home' && active.chapter !== 'ending' && <nav className="chapter-nav" aria-label="chapter navigation">
+        {(['country', 'gbu', 'jazz'] as Chapter[]).map((chapter, index) => <button key={chapter} className={active.chapter === chapter ? 'active' : ''} onClick={() => go(firstFrame(chapter))}>0{index + 1}</button>)}
+      </nav>}
+      <p className="progress-readout">{active.chapter === 'home' ? '00 / 03' : active.chapter === 'ending' ? 'END' : `${String(chapterIndex).padStart(2, '0')} / ${String(chapterCount).padStart(2, '0')}`}</p>
     </main>
   )
 }
