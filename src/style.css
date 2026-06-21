@@ -46,6 +46,25 @@ button { color: inherit; font: inherit; cursor: pointer; }
 .coin-trigger, .white-line { z-index: 6; }
 .trio-points { position: absolute; z-index: 6; inset: 0; pointer-events: none; }
 
+/* The images are the experience. Keep darkness only as a readable edge, never as a curtain. */
+.journey-frame .far-plane { opacity: .14; }
+.journey-frame .frame-shade { background: linear-gradient(90deg, rgba(0,0,0,.48), rgba(0,0,0,.07) 60%, rgba(0,0,0,.3)), linear-gradient(0deg, rgba(0,0,0,.38), transparent 57%, rgba(0,0,0,.05)); }
+.journey-frame .image-plane { filter: saturate(1.06) brightness(.9); }
+.journey-frame.is-active .image-plane { filter: saturate(1.12) brightness(1.03); }
+.home .image-plane, .home.is-active .image-plane { filter: saturate(.78) brightness(.96); }
+.home .frame-shade { background: linear-gradient(90deg, rgba(0,0,0,.54), rgba(0,0,0,.04) 61%, rgba(0,0,0,.18)), linear-gradient(0deg, rgba(0,0,0,.3), transparent 60%); }
+.country .image-plane, .country.is-active .image-plane { filter: sepia(.08) saturate(1.05) brightness(1.03); }
+.country .frame-shade { background: linear-gradient(90deg, rgba(27,17,8,.48), rgba(27,17,8,.05) 61%, rgba(27,17,8,.19)), linear-gradient(0deg, rgba(10,7,4,.3), transparent 57%); }
+.country-door .image-plane, .country-fire .image-plane { filter: saturate(.95) brightness(.92); }
+.country-door.is-active .image-plane, .country-fire.is-active .image-plane { filter: saturate(1.08) brightness(1.02); }
+.gbu .image-plane, .gbu.is-active .image-plane { filter: sepia(.06) saturate(1.13) brightness(1.06); }
+.gbu .frame-shade { background: linear-gradient(90deg, rgba(28,12,2,.45), rgba(28,12,2,.04) 62%, rgba(28,12,2,.2)), linear-gradient(0deg, rgba(12,5,1,.29), transparent 58%); }
+.gbu-eye .image-plane, .gbu-soldier .image-plane { filter: sepia(.12) saturate(1.03) brightness(.96); }
+.gbu-eye.is-active .image-plane, .gbu-soldier.is-active .image-plane { filter: sepia(.05) saturate(1.14) brightness(1.08); }
+.jazz .image-plane, .jazz.is-active .image-plane { filter: saturate(1.1) brightness(1.04); }
+.jazz .frame-shade { background: linear-gradient(90deg, rgba(22,4,2,.43), rgba(22,4,2,.04) 61%, rgba(22,4,2,.19)), linear-gradient(0deg, rgba(10,2,1,.25), transparent 59%); }
+.jazz-white .image-plane, .jazz-white.is-active .image-plane { filter: grayscale(.8) brightness(.5) contrast(1.15); }
+
 .defense .journey-frame { min-height: 82svh; }.defense .scroll-whisper { display: none; }.defense .masthead-meta button:last-child { color: #f0c768; }.defense .journey-frame h1 { font-size: clamp(3rem, 6.2vw, 7rem); }
 
 @media (max-width: 860px) { .masthead { height: 55px; padding: 0 18px; }.masthead-meta { gap: 9px; }.masthead-meta button:last-child, .masthead-meta span { display: none; }.journey-frame { min-height: 100svh; padding: 80px 28px 75px; }.journey-frame h1 { font-size: clamp(3rem, 14vw, 5.2rem); }.frame-copy, .country .frame-copy, .country-sheriff .frame-copy, .country-fire .frame-copy, .gbu-rider .frame-copy, .gbu-eye .frame-copy, .gbu-soldier .frame-copy, .gbu-desert .frame-copy, .gbu-gold .frame-copy, .jazz-mirror .frame-copy, .jazz-body .frame-copy, .jazz-rehearsal .frame-copy, .jazz-showtime .frame-copy, .jazz-applause .frame-copy, .jazz-white .frame-copy { width: 100%; margin-left: 0; }.home .frame-copy { margin-left: 0; }.home h1 { font-size: clamp(4rem, 17vw, 6.2rem); }.image-plane { background-position: center; }.country-coin .frame-copy { margin-top: -13vh; }.coin-trigger { left: 28px; bottom: 15vh; width: 105px; height: 105px; }.coin-trigger span { font-size: 41px; }.enter { left: 28px; bottom: 8vh; }.chapter-nav { display: none; }.progress-readout { left: 28px; bottom: 20px; }.scroll-whisper { right: 28px; font-size: 8px; }.gbu-trio .frame-copy { width: 100%; margin: 0; text-align: left; align-self: center; }.pointer-world { opacity: 0 !important; }.jazz-showtime .image-plane, .jazz-applause .image-plane { background-position: 56% center; }.ending .frame-copy { width: 100%; }.ending .enter { margin-top: 2.5rem; } }
