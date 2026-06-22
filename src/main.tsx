@@ -57,7 +57,7 @@ const chapterPlaylists: Record<Chapter, string[]> = {
 
 class AudioDirector {
   context: AudioContext | null = null
-  oscillator: OscillatorNode | null = null
+  ambientNodes: AudioScheduledSourceNode[] = []
   gain: GainNode | null = null
   muted = true
   currentAudio: HTMLAudioElement | null = null
@@ -102,17 +102,22 @@ class AudioDirector {
   }
 
   stop() {
-    const oscillator = this.oscillator
+    const ctx = this.context
     const gain = this.gain
+    const ambient = this.ambientNodes
     const currentAudio = this.currentAudio
-    if (gain && this.context) gain.gain.exponentialRampToValueAtTime(0.0001, this.context.currentTime + 0.45)
-    if (oscillator) window.setTimeout(() => oscillator.stop(), 480)
-    this.oscillator = null
+    this.ambientNodes = []
     this.gain = null
-    if (currentAudio) {
-      this.fade(currentAudio, 0, 500, () => currentAudio.pause())
-      this.currentAudio = null
-    }
+    this.currentAudio = null
+    if (gain && ctx) gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.5)
+    if (ambient.length) window.setTimeout(() => {
+      ambient.forEach((node) => {
+        try { node.stop() } catch { /* already stopped */ }
+        try { node.disconnect() } catch { /* noop */ }
+      })
+      try { gain?.disconnect() } catch { /* noop */ }
+    }, 560)
+    if (currentAudio) this.fade(currentAudio, 0, 500, () => currentAudio.pause())
   }
 
   fade(audio: HTMLAudioElement, target: number, duration: number, done?: () => void) {
@@ -160,20 +165,59 @@ class AudioDirector {
     void next.play().then(() => this.fade(next, 0.62, 850)).catch(() => {})
   }
 
-  // 老无所依 has no licensed track: a continuous low desert-wind bed instead.
+  // 老无所依 has no licensed track — synthesize a desert sound bed: filtered-noise wind that
+  // gusts over a low drone, swelling in on entrance so the opening feels immersive, not bare.
   windBed() {
-    const oscillator = this.context!.createOscillator()
-    const gain = this.context!.createGain()
-    const now = this.context!.currentTime
-    oscillator.type = 'sine'
-    oscillator.frequency.setValueAtTime(48, now)
-    oscillator.detune.setValueAtTime(-220, now)
-    gain.gain.setValueAtTime(0.0001, now)
-    gain.gain.exponentialRampToValueAtTime(0.016, now + 0.8)
-    oscillator.connect(gain).connect(this.context!.destination)
-    oscillator.start()
-    this.oscillator = oscillator
-    this.gain = gain
+    const ctx = this.context!
+    const now = ctx.currentTime
+
+    // Master envelope: a slow swell-in as you arrive in the chapter.
+    const master = ctx.createGain()
+    master.gain.setValueAtTime(0.0001, now)
+    master.gain.exponentialRampToValueAtTime(1, now + 2.6)
+    master.connect(ctx.destination)
+    this.gain = master
+
+    // Wind = looped white noise through a bandpass whose centre drifts (gusts) with an LFO.
+    const noise = ctx.createBufferSource()
+    const buffer = ctx.createBuffer(1, ctx.sampleRate * 3, ctx.sampleRate)
+    const data = buffer.getChannelData(0)
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1
+    noise.buffer = buffer
+    noise.loop = true
+    const band = ctx.createBiquadFilter()
+    band.type = 'bandpass'
+    band.frequency.setValueAtTime(470, now)
+    band.Q.setValueAtTime(0.85, now)
+    const windGain = ctx.createGain()
+    windGain.gain.setValueAtTime(0.07, now)
+    noise.connect(band).connect(windGain).connect(master)
+
+    // Gust LFO sweeps the band centre (the whistle rising and falling); swell LFO breathes volume.
+    const gust = ctx.createOscillator()
+    gust.frequency.setValueAtTime(0.06, now)
+    const gustDepth = ctx.createGain()
+    gustDepth.gain.setValueAtTime(330, now)
+    gust.connect(gustDepth).connect(band.frequency)
+    const swell = ctx.createOscillator()
+    swell.frequency.setValueAtTime(0.1, now)
+    const swellDepth = ctx.createGain()
+    swellDepth.gain.setValueAtTime(0.04, now)
+    swell.connect(swellDepth).connect(windGain.gain)
+
+    // A low desolation drone underneath the wind — emptiness, dread.
+    const drone = ctx.createOscillator()
+    drone.type = 'sine'
+    drone.frequency.setValueAtTime(44, now)
+    const droneGain = ctx.createGain()
+    droneGain.gain.setValueAtTime(0.05, now)
+    drone.connect(droneGain).connect(master)
+
+    noise.start(now)
+    gust.start(now)
+    swell.start(now)
+    drone.start(now)
+    this.ambientNodes = [noise, gust, swell, drone]
   }
 
   accent(kind: 'metal' | 'light' | 'beat' = 'light') {
