@@ -1,8 +1,9 @@
 # Local defense soundtrack
 
-This folder holds the licensed music used **only** for the local defense build. The `.mp3`
-files are git-ignored (see `../../.gitignore`) so copyrighted audio is never committed or
-deployed to the public GitHub Pages site. This `README.md` is the only tracked file here.
+This folder holds the licensed music for the defense build. The tracks are committed and
+deployed to GitHub Pages so the site can play them during the defense (a deliberate one-time
+choice by the owner). If a track is ever absent, the page falls back silently to the built-in
+Web Audio textures — no console errors.
 
 ## How it works
 
