@@ -3,3 +3,6 @@ dist/
 outputs/
 .vite/
 *.tsbuildinfo
+
+# Local defense soundtrack — licensed full tracks, never published
+public/audio/*.mp3

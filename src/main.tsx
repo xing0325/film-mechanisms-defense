@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import './style.css'
 
@@ -42,19 +42,17 @@ const frames: Frame[] = [
   { id: 'ending', chapter: 'ending', image: asset('home-cinema.png'), kicker: 'END OF SCREENING', line: '电影没有结束。', subline: '它只是重新开始运转。', cue: 'silence', variant: 'ending' },
 ]
 
-const audioSlots: Record<Cue, { source?: string; fallback: number; texture: OscillatorType }> = {
-  silence: { fallback: 0, texture: 'sine' },
-  wind: { source: `${import.meta.env.BASE_URL}audio/no-country-wind.mp3`, fallback: 48, texture: 'sine' },
-  coin: { source: `${import.meta.env.BASE_URL}audio/no-country-coin.mp3`, fallback: 196, texture: 'triangle' },
-  dream: { source: `${import.meta.env.BASE_URL}audio/no-country-dream.mp3`, fallback: 66, texture: 'sine' },
-  'main-title': { source: `${import.meta.env.BASE_URL}audio/gbu-main-title.mp3`, fallback: 132, texture: 'square' },
-  soldier: { source: `${import.meta.env.BASE_URL}audio/gbu-story-of-a-soldier.mp3`, fallback: 92, texture: 'triangle' },
-  gold: { source: `${import.meta.env.BASE_URL}audio/gbu-ecstasy-of-gold.mp3`, fallback: 176, texture: 'sawtooth' },
-  trio: { source: `${import.meta.env.BASE_URL}audio/gbu-trio.mp3`, fallback: 74, texture: 'sine' },
-  backstage: { source: `${import.meta.env.BASE_URL}audio/jazz-backstage.mp3`, fallback: 108, texture: 'triangle' },
-  showtime: { source: `${import.meta.env.BASE_URL}audio/jazz-take-off-with-us.mp3`, fallback: 158, texture: 'sawtooth' },
-  applause: { source: `${import.meta.env.BASE_URL}audio/jazz-applause.mp3`, fallback: 205, texture: 'square' },
-  white: { source: `${import.meta.env.BASE_URL}audio/jazz-bye-bye-life.mp3`, fallback: 330, texture: 'sine' },
+const track = (name: string) => `${import.meta.env.BASE_URL}audio/${name}.mp3`
+
+// Music is bound to the chapter (film), not the scroll position: one playlist per film that keeps
+// playing while you stay in that film, advancing track-to-track on its own and only crossfading
+// when you cross into the next film. 老无所依 has no licensed track — it uses a wind bed instead.
+const chapterPlaylists: Record<Chapter, string[]> = {
+  home: [],
+  country: [],
+  gbu: ['gbu-main-title', 'gbu-story-of-a-soldier', 'gbu-ecstasy-of-gold', 'gbu-trio'].map(track),
+  jazz: ['jazz-on-broadway', 'jazz-take-off-with-us', 'jazz-everything-old-is-new-again', 'jazz-bye-bye-life'].map(track),
+  ending: [],
 }
 
 class AudioDirector {
@@ -63,16 +61,44 @@ class AudioDirector {
   gain: GainNode | null = null
   muted = true
   currentAudio: HTMLAudioElement | null = null
+  available = new Set<string>()
+  probed = false
+  currentChapter: Chapter | null = null
+  lastChapter: Chapter | null = null
+  playlist: string[] = []
+  playlistIndex = 0
 
   unlock() {
     if (!this.context) this.context = new AudioContext()
     if (this.context.state === 'suspended') void this.context.resume()
     this.muted = false
+    void this.probeSources()
+  }
+
+  // Probe public/audio once on first unlock. HTTP HEAD keeps the console clean: a missing file
+  // is a quiet 404 response (not a thrown resource error), so absent tracks just stay on texture.
+  async probeSources() {
+    if (this.probed) return
+    this.probed = true
+    const sources = [...new Set(Object.values(chapterPlaylists).flat())]
+    await Promise.all(sources.map(async (src) => {
+      try {
+        const res = await fetch(src, { method: 'HEAD' })
+        const type = res.headers.get('content-type') || ''
+        // Require a real audio response. Dev servers answer missing files with an index.html
+        // SPA fallback (200 text/html); only audio/* (or octet-stream) is a genuine track.
+        if (res.ok && /audio|octet-stream/i.test(type)) this.available.add(src)
+      } catch {
+        /* offline or blocked — keep the quiet wind bed */
+      }
+    }))
+    // Tracks were unknown when sound first switched on; now replay the current film for real.
+    if (!this.muted && this.lastChapter) { this.currentChapter = null; this.playChapter(this.lastChapter) }
   }
 
   setMuted(muted: boolean) {
     this.muted = muted
-    if (muted) this.stop()
+    if (muted) { this.stop(); this.currentChapter = null }
   }
 
   stop() {
@@ -101,28 +127,50 @@ class AudioDirector {
     requestAnimationFrame(tick)
   }
 
-  cue(name: Cue) {
+  // Switch music only when the film changes — never on scroll within the same film.
+  playChapter(chapter: Chapter) {
+    this.lastChapter = chapter
+    if (this.muted || !this.context) return
+    if (chapter === this.currentChapter) return
+    this.currentChapter = chapter
     this.stop()
-    if (this.muted || !this.context || name === 'silence') return
-    const slot = audioSlots[name]
-    // To attach licensed local clips, place them in public/audio and set window.FILM_AUDIO_ENABLED = true.
-    if (slot.source && (window as Window & { FILM_AUDIO_ENABLED?: boolean }).FILM_AUDIO_ENABLED) {
-      const next = new Audio(slot.source)
-      next.loop = true
-      next.volume = 0
-      void next.play().then(() => this.fade(next, 0.62, 850))
-      this.currentAudio = next
-      return
+    const tracks = chapterPlaylists[chapter].filter((src) => this.available.has(src))
+    if (tracks.length) {
+      this.playlist = tracks
+      this.playlistIndex = 0
+      this.playTrack()
+    } else if (chapter === 'country') {
+      this.windBed()
     }
-    const oscillator = this.context.createOscillator()
-    const gain = this.context.createGain()
-    const now = this.context.currentTime
-    oscillator.type = slot.texture
-    oscillator.frequency.setValueAtTime(slot.fallback, now)
-    oscillator.detune.setValueAtTime(name === 'wind' ? -220 : 0, now)
+    // home / ending (or a film with no local tracks) stay silent
+  }
+
+  playTrack() {
+    if (this.muted || !this.context) return
+    const src = this.playlist[this.playlistIndex]
+    const next = new Audio(src)
+    next.volume = 0
+    this.currentAudio = next
+    // When a track ends, advance through the film's playlist and loop — no scroll involved.
+    next.addEventListener('ended', () => {
+      if (this.currentAudio !== next) return
+      this.playlistIndex = (this.playlistIndex + 1) % this.playlist.length
+      this.playTrack()
+    })
+    void next.play().then(() => this.fade(next, 0.62, 850)).catch(() => {})
+  }
+
+  // 老无所依 has no licensed track: a continuous low desert-wind bed instead.
+  windBed() {
+    const oscillator = this.context!.createOscillator()
+    const gain = this.context!.createGain()
+    const now = this.context!.currentTime
+    oscillator.type = 'sine'
+    oscillator.frequency.setValueAtTime(48, now)
+    oscillator.detune.setValueAtTime(-220, now)
     gain.gain.setValueAtTime(0.0001, now)
-    gain.gain.exponentialRampToValueAtTime(name === 'gold' || name === 'showtime' ? 0.028 : 0.016, now + 0.8)
-    oscillator.connect(gain).connect(this.context.destination)
+    gain.gain.exponentialRampToValueAtTime(0.016, now + 0.8)
+    oscillator.connect(gain).connect(this.context!.destination)
     oscillator.start()
     this.oscillator = oscillator
     this.gain = gain
@@ -194,8 +242,8 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (soundOn) audio.current.cue(active.cue)
-  }, [active.cue, soundOn])
+    if (soundOn) audio.current.playChapter(active.chapter)
+  }, [active.chapter, soundOn])
 
   useEffect(() => {
     const keys = (event: KeyboardEvent) => {
@@ -251,11 +299,10 @@ function App() {
           data-frame
           data-index={index}
           className={`journey-frame ${frame.chapter} ${frame.variant} ${index === activeIndex ? 'is-active' : ''}`}
-          style={{ '--scene': `url('${frame.image}')`, '--frame-index': index } as CSSProperties}
           onClick={() => { if (index !== 0) { wake(); audio.current.accent(frame.chapter === 'jazz' ? 'beat' : 'light') } }}
         >
-          <div className="image-plane" />
-          <div className="far-plane" />
+          <img className="image-plane" src={frame.image} alt="" aria-hidden="true" draggable={false} />
+          <img className="far-plane" src={frame.image} alt="" aria-hidden="true" draggable={false} />
           <div className="frame-shade" />
           <div className="dust-layer" />
           <div className="foreground-layer" aria-hidden="true"><i /><i /><i /></div>
